@@ -1,62 +1,64 @@
-const { db } = require('../config/db');
+const { supabase } = require('../config/supabaseClient');
 
-const createConseil = (conseil, callback) => {
+const createConseil = async (conseil) => {
   const { Code_Utilisateurs, Titre, Description, Theme } = conseil;
-  const sql = `
-    INSERT INTO Conseils (Code_Utilisateurs, Titre, Description, Date, Theme) 
-    VALUES (?, ?, ?, ?, ?);
-  `;
-  const params = [Code_Utilisateurs, Titre, Description, new Date().toISOString(), Theme];
+  const { data, error } = await supabase
+    .from('Conseils')
+    .insert([
+      {
+        Code_Utilisateurs,
+        Titre,
+        Description,
+        Date: new Date().toISOString(),
+        Theme,
+      },
+    ])
+    .select();
 
-  db.run(sql, params, function(err) {
-    if (err) {
-      return callback(err);
-    }
-    const conseilId = this.lastID;
-    callback(null, { Code_Conseils: conseilId, ...conseil, Date: new Date().toISOString() });
-  });
+  if (error) {
+    throw new Error(`Erreur lors de la création du conseil : ${error.message}`);
+  }
+
+  return data[0];
 };
 
-const getAllConseils = (callback) => {
-  const sql = 'SELECT * FROM Conseils';
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      return callback(err);
-    }
-    callback(null, rows);
-  });
+const getAllConseils = async () => {
+  const { data, error } = await supabase.from('Conseils').select('*');
+
+  if (error) {
+    throw new Error(`Erreur lors de la récupération des conseils : ${error.message}`);
+  }
+
+  return data;
 };
 
-const deleteConseil = (conseilId, callback) => {
-  const sql = 'DELETE FROM Conseils WHERE Code_Conseils = ?';
-  db.run(sql, [conseilId], function(err) {
-    if (err) {
-      return callback(err);
-    }
-    callback(null);
-  });
+const deleteConseil = async (conseilId) => {
+  const { error } = await supabase.from('Conseils').delete().eq('Code_Conseils', conseilId);
+
+  if (error) {
+    throw new Error(`Erreur lors de la suppression du conseil : ${error.message}`);
+  }
+
+  return true;
 };
 
-const updateConseil = (conseilId, updatedConseil, callback) => {
+const updateConseil = async (conseilId, updatedConseil) => {
   const { Titre, Description, Theme } = updatedConseil;
-  const sql = `
-    UPDATE Conseils
-    SET Titre = ?, Description = ?, Theme = ?
-    WHERE Code_Conseils = ?;
-  `;
-  const params = [Titre, Description, Theme, conseilId];
+  const { error } = await supabase
+    .from('Conseils')
+    .update({ Titre, Description, Theme })
+    .eq('Code_Conseils', conseilId);
 
-  db.run(sql, params, function(err) {
-    if (err) {
-      return callback(err);
-    }
-    callback(null);
-  });
+  if (error) {
+    throw new Error(`Erreur lors de la mise à jour du conseil : ${error.message}`);
+  }
+
+  return true;
 };
 
 module.exports = {
   createConseil,
   getAllConseils,
   deleteConseil,
-  updateConseil, 
+  updateConseil,
 };
